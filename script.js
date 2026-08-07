@@ -73,7 +73,7 @@ function findBestSubjectMatch(rawText){
 /* ---------------- NAVIGATION ---------------- */
 const titles = {
   dashboard: ['Dashboard', "Here's how your day looks."],
-  subjects: ['Subjects', "Tell Period what you're studying."],
+  subjects: ['Subjects', "Tell Lecture what you're studying."],
   timetable: ['Timetable', 'Manage every class you attend.'],
   attendance: ['Attendance', 'Track how you\'re doing, subject by subject.'],
   assignments: ['Assignments', 'Everything due, in one place.']
@@ -679,7 +679,7 @@ let importedRows = [];
 function handleFile(file){
   const status = document.getElementById('importStatus');
   if(state.subjects.length === 0){
-    status.innerHTML = `Tip: add your subjects first (<a href="#" onclick="switchView('subjects');return false;" style="color:var(--teal-deep);text-decoration:underline;">go to Subjects →</a>) and Period will pre-select matching classes for you. Reading your file now either way…`;
+    status.innerHTML = `Tip: add your subjects first (<a href="#" onclick="switchView('subjects');return false;" style="color:var(--teal-deep);text-decoration:underline;">go to Subjects →</a>) and Lecture will pre-select matching classes for you. Reading your file now either way…`;
   } else {
     status.textContent = `Reading ${file.name}…`;
   }
@@ -809,7 +809,7 @@ async function renderPdfPageToDataURL(pdf, pageNum, scale=1.6){
   return canvas.toDataURL('image/png');
 }
 
-// The 3 free OpenRouter models Period cross-checks against each other for photo/PDF reading
+// The 3 free OpenRouter models Lecture cross-checks against each other for photo/PDF reading
 const FREE_MODELS = [
   'google/gemma-4-31b-it:free',
   'google/gemma-4-26b-a4b-it:free',
@@ -834,7 +834,7 @@ async function aiExtractRows(kind, payload, model){
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + key,
       'HTTP-Referer': location.href,
-      'X-Title': 'Period — Timetable Assistant'
+      'X-Title': 'Lecture — Timetable Assistant'
     },
     body: JSON.stringify({
       model,
@@ -1019,7 +1019,7 @@ function resolveSequentialTimeColumns(header, timeColIdx){
   return resolved;
 }
 
-const NON_CLASS_LABELS = /^(break\s*time|activity\s*time|lunch\s*break|free\s*period)$/i;
+const NON_CLASS_LABELS = /^(break\s*time|activity\s*time|lunch\s*break|free\s*Lecture)$/i;
 const normCode = c => String(c||'').replace(/\s+/g,'').toUpperCase();
 
 // Reads the legend/abbreviation table many timetables print below the grid itself:
