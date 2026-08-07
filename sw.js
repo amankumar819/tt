@@ -1,4 +1,4 @@
-// Period — minimal service worker
+// Lecture — minimal service worker
 // Its only job is letting the page show real notifications on mobile browsers
 // (Android Chrome and others require this — they block `new Notification()`
 // called directly from a page and require registration.showNotification()
