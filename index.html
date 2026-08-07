@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Period — Timetable Assistant</title>
+<title>Lecture — Timetable Assistant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
     <div class="brand">
       <div class="brand-mark">P</div>
       <div>
-        <div class="brand-name">Period</div>
+       <div class="brand-name">Lecture</div>
         <div class="brand-sub">timetable assistant</div>
       </div>
     </div>
@@ -71,11 +71,11 @@
 
     <div id="notifBanner" class="banner" style="display:none;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <div>Turn on notifications so Period can remind you 15 minutes before class. <button class="pill-btn sm" id="enableNotifBtn" style="margin-left:8px;">Enable notifications</button></div>
+      <div>Turn on notifications so Lecture can remind you 15 minutes before class. <button class="pill-btn sm" id="enableNotifBtn" style="margin-left:8px;">Enable notifications</button></div>
     </div>
     <div id="notifDeniedBanner" class="banner" style="display:none;background:rgba(221,92,78,.1);border-color:rgba(221,92,78,.35);">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
-      <div>Notifications are blocked for this page in your browser settings. Turn them on there, then reload — Period can't request permission again on its own.</div>
+      <div>Notifications are blocked for this page in your browser settings. Turn them on there, then reload — Lecture can't request permission again on its own.</div>
     </div>
     <div class="banner" id="notifTestBanner" style="display:none;justify-content:space-between;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -149,7 +149,7 @@
     <section class="view" id="view-subjects">
       <div class="card full-card" style="margin-bottom:18px;">
         <h3 style="margin:0 0 4px;font-size:15px;">Your batch/group</h3>
-        <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">If your college publishes one master timetable covering every course and section, tell Period which one is yours. Some timetables also run parallel practical or tutorial groups (P1/P2/P3, T1/T2/T3) in the same slot — set those too. Nothing gets hidden when you import: you'll always see the full sheet and tap-select your own classes — this just pre-checks the chips that match, so you have less to tap.</p>
+        <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">If your college publishes one master timetable covering every course and section, tell Lecture which one is yours. Some timetables also run parallel practical or tutorial groups (P1/P2/P3, T1/T2/T3) in the same slot — set those too. Nothing gets hidden when you import: you'll always see the full sheet and tap-select your own classes — this just pre-checks the chips that match, so you have less to tap.</p>
         <div class="field-row">
           <div class="field"><label>Course</label>
             <input type="text" id="myCourse" placeholder="e.g. BBA">
@@ -199,7 +199,7 @@
     <section class="view" id="view-timetable">
       <div class="card full-card" style="margin-bottom:18px;">
         <h3 style="margin:0 0 4px;font-size:15px;">Import your timetable</h3>
-        <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">Upload a PDF, Excel, or photo — even a big master file with every section in it — and Period will show you the whole sheet, exactly as it is. Tap each class that's yours (chips matching your saved subjects or your batch/group are pre-checked to save you time); nothing is added until you confirm.</p>
+        <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">Upload a PDF, Excel, or photo — even a big master file with every section in it — and Lecture will show you the whole sheet... exactly as it is. Tap each class that's yours (chips matching your saved subjects or your batch/group are pre-checked to save you time); nothing is added until you confirm.</p>
         <div class="upload-zone" id="uploadZone">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
           <p><strong>Click to upload</strong> or drag a .pdf, .xlsx, .csv, or a photo (.jpg/.png) of your timetable</p>
