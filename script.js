@@ -523,6 +523,34 @@ document.getElementById('globalSearch').addEventListener('input', e=>{
 });
 
 /* ---------------- NOTIFICATIONS ---------------- */
+// Mobile browsers (Android Chrome and most others) refuse to run
+// `new Notification(...)` called directly from the page — they require a
+// service worker and registration.showNotification() instead. This registers
+// sw.js (must sit next to this HTML file on the server) and falls back to the
+// plain constructor for desktop browsers that still allow it.
+let swRegistration = null;
+async function initServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+  try{
+    swRegistration = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+  }catch(e){
+    console.warn('Service worker registration failed — notifications will only work on browsers that still allow new Notification() directly (mainly desktop):', e);
+    swRegistration = null;
+  }
+}
+initServiceWorker();
+
+function showAppNotification(title, options){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  if(swRegistration && swRegistration.showNotification){
+    swRegistration.showNotification(title, options);
+  } else {
+    try{ new Notification(title, options); }
+    catch(e){ console.warn('Notification blocked on this browser (needs a working service worker — check sw.js is deployed next to index.html):', e); }
+  }
+}
+
 function updateNotifBanner(){
   const askBanner = document.getElementById('notifBanner');
   const deniedBanner = document.getElementById('notifDeniedBanner');
@@ -537,9 +565,7 @@ document.getElementById('enableNotifBtn').addEventListener('click', ()=>{
   if('Notification' in window) Notification.requestPermission().then(updateNotifBanner);
 });
 document.getElementById('testNotifBtn').addEventListener('click', ()=>{
-  if('Notification' in window && Notification.permission==='granted'){
-    new Notification('Test notification', { body: 'If you can see this, notifications are working correctly.' });
-  }
+  showAppNotification('Test notification', { body: 'If you can see this, notifications are working correctly.' });
   showToast({ title:'Test: sample class starting', sub:'Are you present or absent?', onPresent:()=>{}, onAbsent:()=>{} });
 });
 updateNotifBanner();
@@ -582,15 +608,11 @@ function checkNotifications(){
 
     if(startMin-15===nowMin && !state.notifiedLog[reminderKey]){
       state.notifiedLog[reminderKey]=true; saveData();
-      if('Notification' in window && Notification.permission==='granted'){
-        new Notification('Class in 15 minutes', { body: `${c.subject} · ${c.room||''}` });
-      }
+      showAppNotification('Class in 15 minutes', { body: `${c.subject} · ${c.room||''}` });
     }
     if(startMin===nowMin && !state.notifiedLog[startKey]){
       state.notifiedLog[startKey]=true; saveData();
-      if('Notification' in window && Notification.permission==='granted'){
-        new Notification(`${c.subject} is starting`, { body: 'Are you present or absent?' });
-      }
+      showAppNotification(`${c.subject} is starting`, { body: 'Are you present or absent?' });
       showToast({
         title: `${c.subject} just started`,
         sub: 'Are you present or absent?',
@@ -602,6 +624,28 @@ function checkNotifications(){
 }
 setInterval(checkNotifications, 20000);
 setInterval(renderDashboard, 20000); // keep live clock / current class in sync
+
+// High-priority assignments repeat-notify (roughly hourly) while the app is
+// open and they're still not marked done — medium/low priority stay silent
+// here and just show in the Assignments list instead.
+function checkAssignmentReminders(){
+  const now = Date.now();
+  const REPEAT_MS = 60*60*1000; // once per hour per assignment
+  state.assignments.forEach(a=>{
+    if(a.status==='done' || a.priority!=='high') return;
+    const key = `assignRemind_${a.id}`;
+    const last = state.notifiedLog[key] || 0;
+    if(now - last < REPEAT_MS) return;
+    state.notifiedLog[key] = now; saveData();
+    const overdue = a.dueDate && a.dueDate < todayISO();
+    showAppNotification(`⏰ High priority: ${a.title}`, {
+      body: overdue ? `Overdue${a.subject?' · '+a.subject:''}` : `${a.dueDate?'Due '+a.dueDate:'No due date'}${a.subject?' · '+a.subject:''}`,
+      tag: key // replaces the previous notification with this same tag instead of stacking
+    });
+  });
+}
+checkAssignmentReminders();
+setInterval(checkAssignmentReminders, 5*60*1000); // check every 5 min; each assignment still only fires ~hourly
 
 /* ---------------- FILE IMPORT (PDF / EXCEL / CSV) ---------------- */
 const uploadZone = document.getElementById('uploadZone');
