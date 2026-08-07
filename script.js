@@ -227,6 +227,14 @@ function openAssignModal(a){
   document.getElementById('assignDesc').value = a ? a.description : '';
   document.getElementById('assignDue').value = a ? a.dueDate : '';
   document.getElementById('assignPriority').value = a ? a.priority : 'medium';
+   document.getElementById('assignPriority').value = a ? a.priority : 'medium';
+   const reminderSection = document.getElementById('reminderSection');
+
+if (document.getElementById('assignPriority').value === 'high') {
+  reminderSection.style.display = 'block';
+} else {
+  reminderSection.style.display = 'none';
+}
   const dl = document.getElementById('subjectList');
   const subjNames = [...new Set([...state.subjects.map(s=>s.name), ...state.classes.map(c=>c.subject)])];
   dl.innerHTML = subjNames.map(s=>`<option value="${escapeHtml(s)}">`).join('');
@@ -254,7 +262,21 @@ document.getElementById('saveAssignBtn').addEventListener('click', ()=>{
   }
   saveData(); closeModal('assignModalOverlay'); renderAll();
 });
+saveData(); closeModal('assignModalOverlay'); renderAll();
+});
 
+document.getElementById('assignPriority').addEventListener('change', function () {
+  const reminderSection = document.getElementById('reminderSection');
+
+  if (this.value === 'high') {
+    reminderSection.style.display = 'block';
+  } else {
+    reminderSection.style.display = 'none';
+    document.getElementById('assignReminder').value = '0';
+  }
+});
+
+function toggleAssignDone(id){
 function toggleAssignDone(id){
   const a = state.assignments.find(x=>x.id===id);
   if(!a) return;
