@@ -529,25 +529,40 @@ document.getElementById('globalSearch').addEventListener('input', e=>{
 // sw.js (must sit next to this HTML file on the server) and falls back to the
 // plain constructor for desktop browsers that still allow it.
 let swRegistration = null;
+function setNotifDiagnostic(text){
+  const el = document.getElementById('notifDiagnostic');
+  if(el) el.textContent = text;
+}
 async function initServiceWorker(){
-  if(!('serviceWorker' in navigator)) return;
+  if(!('serviceWorker' in navigator)){
+    setNotifDiagnostic('This browser has no serviceWorker support at all — notifications cannot work here.');
+    return;
+  }
   try{
     swRegistration = await navigator.serviceWorker.register('sw.js');
     await navigator.serviceWorker.ready;
+    setNotifDiagnostic('Service worker: registered OK (scope: ' + swRegistration.scope + ')');
   }catch(e){
-    console.warn('Service worker registration failed — notifications will only work on browsers that still allow new Notification() directly (mainly desktop):', e);
+    console.warn('Service worker registration failed:', e);
     swRegistration = null;
+    setNotifDiagnostic('Service worker FAILED to register: ' + e.message + ' — check that sw.js is uploaded in the same folder as this page and reachable at ' + location.href.replace(/[^/]*$/,'') + 'sw.js');
   }
 }
 initServiceWorker();
 
 function showAppNotification(title, options){
-  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  if(!('Notification' in window)){ setNotifDiagnostic('This browser has no Notification API at all.'); return; }
+  if(Notification.permission !== 'granted'){ setNotifDiagnostic('Permission is "' + Notification.permission + '", not granted — notifications are blocked.'); return; }
   if(swRegistration && swRegistration.showNotification){
-    swRegistration.showNotification(title, options);
+    swRegistration.showNotification(title, options)
+      .then(()=> setNotifDiagnostic('Sent via service worker OK just now.'))
+      .catch(e=> setNotifDiagnostic('Service worker showNotification() failed: ' + e.message));
   } else {
-    try{ new Notification(title, options); }
-    catch(e){ console.warn('Notification blocked on this browser (needs a working service worker — check sw.js is deployed next to index.html):', e); }
+    try{
+      new Notification(title, options);
+      setNotifDiagnostic('Sent via new Notification() directly (no service worker) just now.');
+    }
+    catch(e){ setNotifDiagnostic('Notification blocked: ' + e.message + ' — this browser needs a working service worker and none is registered.'); }
   }
 }
 
