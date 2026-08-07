@@ -541,7 +541,7 @@ async function initServiceWorker(){
   try{
     swRegistration = await navigator.serviceWorker.register('sw.js');
     await navigator.serviceWorker.ready;
-    setNotifDiagnostic('Service worker: registered OK (scope: ' + swRegistration.scope + ')');
+     
   }catch(e){
     console.warn('Service worker registration failed:', e);
     swRegistration = null;
