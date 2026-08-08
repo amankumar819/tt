@@ -8,7 +8,7 @@ const STORAGE_KEY = 'periodAppData';
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 function defaultData(){
-  return { classes: [], subjects: [], attendance: {}, assignments: [], settings: { theme: 'light', pGroup: '', tGroup: '', course: '', section: '', openRouterKey: '' }, notifiedLog: {} };
+  return { classes: [], subjects: [], attendance: {}, assignments: [], settings: { theme: 'light' }, notifiedLog: {} };
 }
 function loadData(){
   try{
@@ -36,25 +36,11 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
   saveData(); applyTheme();
 });
 applyTheme();
-document.getElementById('myCourse').value = state.settings.course || '';
-document.getElementById('mySection').value = state.settings.section || '';
-document.getElementById('myPGroup').value = state.settings.pGroup || '';
-document.getElementById('myTGroup').value = state.settings.tGroup || '';
-document.getElementById('myCourse').addEventListener('change', e=>{ state.settings.course = e.target.value.trim(); saveData(); });
-document.getElementById('mySection').addEventListener('change', e=>{ state.settings.section = e.target.value; saveData(); });
-document.getElementById('myPGroup').addEventListener('change', e=>{ state.settings.pGroup = e.target.value; saveData(); });
-document.getElementById('myTGroup').addEventListener('change', e=>{ state.settings.tGroup = e.target.value; saveData(); });
-
-// Note: there's no UI field for state.settings.openRouterKey anymore (removed so
-// this can be published without exposing a key-entry box). The AI-assisted photo/
-// PDF reading below still works if openRouterKey is set some other way — e.g. by
-// running `localStorage` edits yourself, or hardcoding a default in defaultData()
-// above for a personal/private copy of this app.
 
 // Best-effort match of an imported row's text against a subject you've already
 // saved (by code, abbreviation, or name). Used only to pre-select the chip in the
 // review grid — it no longer hides rows that don't match, so you can still see and
-// tap-select anything the AI or file found, even for subjects you haven't added yet.
+// tap-select anything the file found, even for subjects you haven't added yet.
 function findBestSubjectMatch(rawText){
   if(!state.subjects.length) return null;
   const t = rawText.toLowerCase();
@@ -731,22 +717,7 @@ function handleFile(file){
   } else if(['jpg','jpeg','png','webp'].includes(ext)){
     const reader = new FileReader();
     reader.onload = async e=>{
-      const dataUrl = e.target.result;
-      if(state.settings.openRouterKey){
-        status.textContent = 'Asking AI to read your photo… this can take a moment.';
-        try{
-          const rows = await aiExtractRowsMultiModel('image', dataUrl, status);
-          if(!rows.length){ status.textContent = "The AI couldn't find any classes in that photo. Try a clearer photo, or add classes manually below."; return; }
-          status.textContent = `AI found ${rows.length} possible classes — review below before saving.`;
-          openReviewModal(rows);
-        }catch(err){
-          console.error(err);
-          status.textContent = 'AI reading failed ('+err.message+'). Falling back to on-device OCR…';
-          await ocrFallback(dataUrl, status);
-        }
-      } else {
-        await ocrFallback(dataUrl, status);
-      }
+      await ocrFallback(e.target.result, status);
     };
     reader.readAsDataURL(file);
   } else if(ext==='pdf'){
@@ -772,33 +743,27 @@ function handleFile(file){
       }catch(err){ console.error(err); }
       const looksScanned = text.replace(/\s/g,'').length < 40; // almost no extractable text = likely a scanned/image PDF
 
-      if(state.settings.openRouterKey){
+      if(looksScanned){
+        if(typeof Tesseract === 'undefined'){
+          status.textContent = "This PDF looks like a scanned image and on-device photo reading isn't available right now — try adding classes manually below.";
+          return;
+        }
+        status.textContent = 'This PDF looks scanned — reading it page by page on-device (this can take a while)…';
+        const pagesToRead = Math.min(pdf.numPages, 5);
+        let ocrText = '';
         try{
-          let rows;
-          if(!looksScanned){
-            status.textContent = 'Asking 3 free AI models to read the PDF text in parallel…';
-            rows = await aiExtractRowsMultiModel('text', text, status);
-          } else {
-            status.textContent = 'This PDF looks scanned — rendering pages as images for the AI…';
-            const pagesToRead = Math.min(pdf.numPages, 5);
-            rows = [];
-            for(let i=1;i<=pagesToRead;i++){
-              const imgUrl = await renderPdfPageToDataURL(pdf, i);
-              status.textContent = `Reading page ${i} of ${pagesToRead} with 3 free models in parallel…`;
-              const pageRows = await aiExtractRowsMultiModel('image', imgUrl, status);
-              rows = rows.concat(pageRows);
-            }
+          for(let i=1;i<=pagesToRead;i++){
+            status.textContent = `Reading page ${i} of ${pagesToRead} on-device…`;
+            const imgUrl = await renderPdfPageToDataURL(pdf, i);
+            const { data: { text: pageText } } = await Tesseract.recognize(imgUrl, 'eng');
+            ocrText += pageText + '\n';
           }
-          if(!rows.length){ status.textContent = "The AI couldn't find any classes in that PDF. Try adding classes manually below."; return; }
-          status.textContent = `AI found ${rows.length} possible classes — review below before saving.`;
-          openReviewModal(rows);
+          parsePdfText(ocrText);
+          if(document.getElementById('importStatus').textContent.startsWith('Reading')) status.textContent='';
         }catch(err){
           console.error(err);
-          status.textContent = 'AI reading failed ('+err.message+'). Falling back to local text parsing…';
-          parsePdfText(text);
+          status.textContent = "Couldn't read that scanned PDF clearly — try adding classes manually below.";
         }
-      } else if(looksScanned){
-        status.textContent = "This PDF looks like a scanned image — local text extraction can't read it. Add an OpenRouter key above for AI reading, or add classes manually below.";
       } else {
         parsePdfText(text);
         status.textContent='';
@@ -810,9 +775,9 @@ function handleFile(file){
   }
 }
 
-// On-device OCR fallback (used when no OpenRouter key is set, or AI reading fails)
+// On-device OCR for uploaded photos.
 async function ocrFallback(dataUrl, status){
-  if(typeof Tesseract === 'undefined'){ status.textContent='On-device photo reading is not available right now. Add a free OpenRouter key above for AI reading instead, or add classes manually below.'; return; }
+  if(typeof Tesseract === 'undefined'){ status.textContent='On-device photo reading is not available right now — try adding classes manually below.'; return; }
   status.textContent = 'Reading text from your photo on-device… this can take a moment.';
   try{
     const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng');
@@ -820,7 +785,7 @@ async function ocrFallback(dataUrl, status){
     if(document.getElementById('importStatus').textContent.startsWith('Reading')) status.textContent='';
   }catch(err){
     console.error(err);
-    status.textContent = "Couldn't read that photo clearly — try a sharper, well-lit photo, add an OpenRouter key above for AI reading, or add classes manually below.";
+    status.textContent = "Couldn't read that photo clearly — try a sharper, well-lit photo, or add classes manually below.";
   }
 }
 
@@ -833,89 +798,6 @@ async function renderPdfPageToDataURL(pdf, pageNum, scale=1.6){
   const ctx = canvas.getContext('2d');
   await page.render({canvasContext:ctx, viewport}).promise;
   return canvas.toDataURL('image/png');
-}
-
-// The 3 free OpenRouter models Lecture cross-checks against each other for photo/PDF reading
-const FREE_MODELS = [
-  'google/gemma-4-31b-it:free',
-  'google/gemma-4-26b-a4b-it:free',
-  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'
-];
-
-// Send an image or raw text to a free OpenRouter vision/text model and get back
-// structured class rows. Your API key is read from local storage and sent directly
-// from this browser to openrouter.ai — nothing passes through any server of ours.
-async function aiExtractRows(kind, payload, model){
-  const key = state.settings.openRouterKey;
-  model = model || FREE_MODELS[0];
-  if(!key) throw new Error('No OpenRouter API key set');
-  const instructions = `You extract class timetable entries from ${kind==='image' ? 'a photo or scan of a college timetable' : 'raw text extracted from a college timetable PDF'}. Return ONLY a JSON array (no markdown fences, no commentary, no explanation) of objects, one per class slot, with exactly these keys: "day" (full weekday name, e.g. "Monday"), "start" (24-hour "HH:MM"), "end" (24-hour "HH:MM"), "subject" (string), "faculty" (string, empty string if unknown), "room" (string, empty string if unknown), "batch" (string like "P1", "P3", "T2" if this slot names a parallel practical/tutorial batch, else empty string). If a single time slot contains several stacked parallel classes (different batches or elective choices), output a separate object for each one — do not merge them. Do not invent information that isn't visible.`;
-  const userContent = kind==='image'
-    ? [ {type:'text', text: instructions}, {type:'image_url', image_url:{url: payload}} ]
-    : [ {type:'text', text: instructions + '\n\nTimetable text:\n' + String(payload).slice(0, 12000)} ];
-
-  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + key,
-      'HTTP-Referer': location.href,
-      'X-Title': 'Lecture — Timetable Assistant'
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role:'user', content: userContent }],
-      temperature: 0.1
-    })
-  });
-  if(!resp.ok){
-    let detail = '';
-    try{ detail = (await resp.json()).error?.message || ''; }catch(e){}
-    throw new Error(`OpenRouter ${resp.status}${detail? ': '+detail : ''}`);
-  }
-  const data = await resp.json();
-  const content = data.choices?.[0]?.message?.content || '';
-  const match = content.match(/\[[\s\S]*\]/);
-  if(!match) throw new Error('The model did not return a recognizable list of classes');
-  let raw;
-  try{ raw = JSON.parse(match[0]); }catch(e){ throw new Error('Could not parse the model\'s response as JSON'); }
-
-  const rows = raw.map(r=>{
-    const day = DAYS.find(d=>d.toLowerCase().startsWith(String(r.day||'').toLowerCase().slice(0,3))) || 'Monday';
-    const rawText = `${r.subject||''} ${r.faculty||''} ${r.room||''} ${r.batch||''}`;
-    return {
-      id: uid(), day,
-      start: normalizeTime(r.start) || (/^\d{1,2}:\d{2}$/.test(String(r.start||''))? r.start : '09:00'),
-      end: normalizeTime(r.end) || (/^\d{1,2}:\d{2}$/.test(String(r.end||''))? r.end : '10:00'),
-      subject: (r.subject || 'Untitled subject') + (r.batch ? ` (${r.batch})` : ''),
-      faculty: r.faculty || '',
-      room: r.room || '',
-      _raw: rawText,
-      _model: model,
-      _source: 'ai'
-    };
-  });
-
-  rows.forEach(r=> delete r._raw);
-  return rows;
-}
-
-// Runs all 3 free models on the same image/text at the same time, then merges their
-// answers: identical classes found by more than one model are combined into a single
-// chip (marked "✓ N models agree"), and each row is checked against your saved
-// subjects so matching classes are pre-selected in the review grid.
-async function aiExtractRowsMultiModel(kind, payload, status){
-  if(status) status.textContent = `Asking ${FREE_MODELS.length} free AI models to read this in parallel…`;
-  const settled = await Promise.allSettled(FREE_MODELS.map(m => aiExtractRows(kind, payload, m)));
-  let combined = [];
-  let okCount = 0;
-  let lastError = null;
-  settled.forEach((res, i)=>{
-    if(res.status === 'fulfilled'){ okCount++; combined = combined.concat(res.value); }
-    else { lastError = res.reason; console.warn('Model failed:', FREE_MODELS[i], res.reason); }
-  });
-  if(okCount === 0) throw (lastError || new Error('All 3 models failed to respond'));
-  return combined;
 }
 
 // Excel merges a class that visually spans several stacked rows/columns into one
@@ -1226,7 +1108,7 @@ function parsePdfText(text){
     }
   }
   if(parsed.length===0){
-    document.getElementById('importStatus').textContent = "Couldn't find any classes in that PDF — check the file isn't a scanned image (use AI reading above for those), or add classes manually below.";
+    document.getElementById('importStatus').textContent = "Couldn't find any classes in that PDF — add classes manually below.";
     return;
   }
   openReviewModal(parsed);
@@ -1251,25 +1133,15 @@ const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
 // Unlike passesGroupFilter (which no longer blocks anything), this only returns true
 // when the row actually names your P-group/T-group/section — used purely to decide
 // what's pre-selected, never to hide a row.
-function hasPositiveGroupMatch(rawText){
-  const t = String(rawText||'').toUpperCase();
-  const {pGroup, tGroup, section} = state.settings;
-  if(pGroup && new RegExp('\\b'+pGroup+'\\b').test(t)) return true;
-  if(tGroup && new RegExp('\\b'+tGroup+'\\b').test(t)) return true;
-  if(section && new RegExp('\\bSEC(?:TION)?\\.?\\s*[-:]?\\s*'+section+'\\b').test(t)) return true;
-  return false;
-}
-
 function openReviewModal(rows){
-  // score each candidate against your saved subjects and your P/T-group settings
-  // (pre-select if either matches) — nothing is ever hidden here, only pre-checked
+  // score each candidate against your saved subjects (pre-select if it matches) —
+  // nothing is ever hidden here, only pre-checked
   let scored = rows.map(r=>({
     ...r,
-    matchedSubjectId: findBestSubjectMatch(`${r.subject} ${r.faculty||''}`),
-    _groupMatch: hasPositiveGroupMatch(r._raw || `${r.subject} ${r.faculty||''} ${r.room||''} ${r.batch||''}`)
+    matchedSubjectId: findBestSubjectMatch(`${r.subject} ${r.faculty||''}`)
   }));
   importedRows = dedupeReviewRows(scored);
-  importedRows.forEach(r=>{ if(r.selected === undefined) r.selected = !!(r.matchedSubjectId || r._groupMatch); });
+  importedRows.forEach(r=>{ if(r.selected === undefined) r.selected = !!r.matchedSubjectId; });
   document.getElementById('importReplaceToggle').checked = true;
   document.getElementById('reviewWarning').style.display = 'none';
   renderReviewGrid();
@@ -1277,8 +1149,7 @@ function openReviewModal(rows){
 }
 
 // Merge candidates that clearly point at the same class slot (same day, same start/end,
-// same subject text once normalized) — this is what lets 3 parallel AI models, or
-// duplicate rows across sheets, collapse into one tappable chip instead of three.
+// same subject text once normalized) — this is what lets duplicate rows across
 function dedupeReviewRows(rows){
   const map = new Map();
   rows.forEach(r=>{
@@ -1326,7 +1197,7 @@ function renderReviewGrid(){
           <div class="gc-subj">${escapeHtml(name)}</div>
           ${code ? `<div class="gc-meta">${escapeHtml(code)}</div>` : ''}
           ${(r.faculty||r.room) ? `<div class="gc-meta">${escapeHtml(r.faculty||'')}${r.faculty&&r.room?' · ':''}${escapeHtml(r.room||'')}</div>` : ''}
-          ${(r._agree>1 && r._source==='ai') ? `<span class="gc-badge">✓ ${r._agree} models agree</span>` : ''}
+          ${r._agree>1 ? `<span class="gc-badge">✓ appears ${r._agree}× (same class, deduped)</span>` : ''}
         </div>`;
       });
       html += '</td>';
