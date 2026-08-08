@@ -227,6 +227,14 @@ function openAssignModal(a){
   document.getElementById('assignDesc').value = a ? a.description : '';
   document.getElementById('assignDue').value = a ? a.dueDate : '';
   document.getElementById('assignPriority').value = a ? a.priority : 'medium';
+   document.getElementById('assignPriority').value = a ? a.priority : 'medium';
+   const reminderSection = document.getElementById('reminderSection');
+
+if (document.getElementById('assignPriority').value === 'high') {
+  reminderSection.style.display = 'block';
+} else {
+  reminderSection.style.display = 'none';
+}
   const dl = document.getElementById('subjectList');
   const subjNames = [...new Set([...state.subjects.map(s=>s.name), ...state.classes.map(c=>c.subject)])];
   dl.innerHTML = subjNames.map(s=>`<option value="${escapeHtml(s)}">`).join('');
@@ -254,6 +262,18 @@ document.getElementById('saveAssignBtn').addEventListener('click', ()=>{
   }
   saveData(); closeModal('assignModalOverlay'); renderAll();
 });
+
+document.getElementById('assignPriority').addEventListener('change', function () {
+  const reminderSection = document.getElementById('reminderSection');
+
+  if (this.value === 'high') {
+    reminderSection.style.display = 'block';
+  } else {
+    reminderSection.style.display = 'none';
+    document.getElementById('assignReminder').value = '0';
+  }
+});
+
 function toggleAssignDone(id){
   const a = state.assignments.find(x=>x.id===id);
   if(!a) return;
@@ -334,7 +354,7 @@ function renderDashboard(){
           <div class="tl-dot"></div>
           <div class="tl-card">
             <div class="tl-subject">${escapeHtml(name)}${cls==='current'?'<span class="tl-badge">now</span>':''}</div>
-            <div class="tl-meta">${code?escapeHtml(code)+' · ':''}${escapeHtml(c.room||'—')}${c.faculty?' · '+escapeHtml(c.faculty):''} · ${fmtTime(c.start)}–${fmtTime(c.end)}</div>
+            <div class="tl-meta">${code?escapeHtml(code)+' · ':''}${escapeHtml(roomWithBatch(c))}${c.faculty?' · '+escapeHtml(c.faculty):''} · ${fmtTime(c.start)}–${fmtTime(c.end)}</div>
           </div>
         </div>`;
     });
@@ -375,7 +395,7 @@ function renderDashboard(){
     const {name, code} = splitSubjectCode(c.subject);
     return `<div class="assign-mini"><div>
         <div class="assign-mini-title">${escapeHtml(name)}</div>
-        <div class="assign-mini-sub">${fmtTime(c.start)}${code?' · '+escapeHtml(code):''} · ${escapeHtml(c.room||'—')}</div>
+        <div class="assign-mini-sub">${fmtTime(c.start)}${code?' · '+escapeHtml(code):''} · ${escapeHtml(roomWithBatch(c))}</div>
       </div></div>`;
   }).join('') : '<div class="empty-note">Nothing scheduled.</div>';
 
@@ -400,6 +420,13 @@ function splitSubjectCode(subj){
   const m = String(subj||'').match(/^(.*)\s\(([^)]+)\)\s*$/);
   return m ? {name:m[1].trim(), code:m[2].trim()} : {name:String(subj||''), code:''};
 }
+// Shows the room together with its batch tag (e.g. "MB303 · T2") wherever a saved
+// class is displayed, so parallel practical/tutorial batches stay identifiable
+// after import — not just while you're picking chips in the review grid.
+function roomWithBatch(c){
+  if(c.room && c.batch) return `${c.room} · ${c.batch}`;
+  return c.room || c.batch || '—';
+}
 
 /* ---------------- RENDER: TIMETABLE ---------------- */
 function renderTimetable(){
@@ -413,7 +440,7 @@ function renderTimetable(){
       <td class="mono">${fmtTime(c.start)}–${fmtTime(c.end)}</td>
       <td>${escapeHtml(c.subject)}</td>
       <td>${escapeHtml(c.faculty||'—')}</td>
-      <td>${escapeHtml(c.room||'—')}</td>
+      <td>${escapeHtml(roomWithBatch(c))}</td>
       <td style="white-space:nowrap;">
         <button class="icon-btn" onclick='openClassModal(${JSON.stringify(c).replace(/'/g,"&#39;")})' title="Edit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -508,7 +535,7 @@ document.getElementById('globalSearch').addEventListener('input', e=>{
     html += `<h3 style="font-size:13px;margin:0 0 8px;">Classes</h3>`;
     html += classHits.map(c=>`<div class="assign-mini"><div>
       <div class="assign-mini-title">${escapeHtml(c.subject)}</div>
-      <div class="assign-mini-sub">${c.day} · ${fmtTime(c.start)} · ${escapeHtml(c.faculty||'—')} · ${escapeHtml(c.room||'—')}</div>
+      <div class="assign-mini-sub">${c.day} · ${fmtTime(c.start)} · ${escapeHtml(c.faculty||'—')} · ${escapeHtml(roomWithBatch(c))}</div>
     </div></div>`).join('');
   }
   if(assignHits.length){
@@ -622,7 +649,7 @@ function checkNotifications(){
 
     if(startMin-15===nowMin && !state.notifiedLog[reminderKey]){
       state.notifiedLog[reminderKey]=true; saveData();
-      showAppNotification('Class in 15 minutes', { body: `${c.subject} · ${c.room||''}` });
+      showAppNotification('Class in 15 minutes', { body: `${c.subject} · ${roomWithBatch(c)}` });
     }
     if(startMin===nowMin && !state.notifiedLog[startKey]){
       state.notifiedLog[startKey]=true; saveData();
@@ -1295,6 +1322,7 @@ function renderReviewGrid(){
       chips.forEach(r=>{
         const {name, code} = splitSubjectCode(r.subject);
         html += `<div class="grid-chip ${r.selected?'selected':''}" onclick="toggleReviewChip('${r.id}')">
+          ${r.batch ? `<span class="gc-badge" style="background:var(--ink);margin-bottom:3px;">${escapeHtml(r.batch)}</span>` : ''}
           <div class="gc-subj">${escapeHtml(name)}</div>
           ${code ? `<div class="gc-meta">${escapeHtml(code)}</div>` : ''}
           ${(r.faculty||r.room) ? `<div class="gc-meta">${escapeHtml(r.faculty||'')}${r.faculty&&r.room?' · ':''}${escapeHtml(r.room||'')}</div>` : ''}
@@ -1336,7 +1364,7 @@ document.getElementById('confirmImportBtn').addEventListener('click', ()=>{
     return;
   }
   warn.style.display = 'none';
-  const toAdd = selected.map(r=>({ id: uid(), day:r.day, start:r.start, end:r.end, subject:r.subject, faculty:r.faculty||'', room:r.room||'' }));
+  const toAdd = selected.map(r=>({ id: uid(), day:r.day, start:r.start, end:r.end, subject:r.subject, faculty:r.faculty||'', room:r.room||'', batch:r.batch||'' }));
   const replace = document.getElementById('importReplaceToggle').checked;
   if(replace) state.classes = toAdd;
   else state.classes.push(...toAdd);
