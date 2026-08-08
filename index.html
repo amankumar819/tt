@@ -148,36 +148,6 @@
     <!-- ============ SUBJECTS VIEW ============ -->
     <section class="view" id="view-subjects">
       <div class="card full-card" style="margin-bottom:18px;">
-        <h3 style="margin:0 0 4px;font-size:15px;">Your batch/group</h3>
-        <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">If your college publishes one master timetable covering every course and section, tell Lecture which one is yours. Some timetables also run parallel practical or tutorial groups (P1/P2/P3, T1/T2/T3) in the same slot — set those too. Nothing gets hidden when you import: you'll always see the full sheet and tap-select your own classes — this just pre-checks the chips that match, so you have less to tap.</p>
-        <div class="field-row">
-          <div class="field"><label>Course</label>
-            <input type="text" id="myCourse" placeholder="e.g. BBA">
-          </div>
-          <div class="field"><label>Section</label>
-            <select id="mySection">
-              <option value="">Not applicable</option>
-              <option>A</option><option>B</option><option>C</option>
-            </select>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field"><label>Practical group (P-group)</label>
-            <select id="myPGroup">
-              <option value="">Not applicable</option>
-              <option>P1</option><option>P2</option><option>P3</option><option>P4</option>
-            </select>
-          </div>
-          <div class="field"><label>Tutorial group (T-group)</label>
-            <select id="myTGroup">
-              <option value="">Not applicable</option>
-              <option>T1</option><option>T2</option><option>T3</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div class="card full-card" style="margin-bottom:18px;">
         <h3 style="margin:0 0 4px;font-size:15px;">Pick what you're studying</h3>
         <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">Add each subject you're enrolled in once. When you build your timetable, you'll pick classes from this list instead of retyping — and everything (attendance, assignments) stays consistent under the same subject name.</p>
       </div>
@@ -199,7 +169,7 @@
     <section class="view" id="view-timetable">
       <div class="card full-card" style="margin-bottom:18px;">
         <h3 style="margin:0 0 4px;font-size:15px;">Import your timetable</h3>
-        <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">Upload a PDF, Excel, or photo — even a big master file with every section in it — and Lecture will show you the whole sheet... exactly as it is. Tap each class that's yours (chips matching your saved subjects or your batch/group are pre-checked to save you time); nothing is added until you confirm.</p>
+        <p style="margin:0 0 14px;font-size:13px;color:var(--ink-soft);">Upload a PDF, Excel, or photo — even a big master file with every section in it — and Lecture will show you the whole sheet, exactly as it is. Tap each class that's yours (chips matching your saved subjects are pre-checked to save you time); nothing is added until you confirm.</p>
         <div class="upload-zone" id="uploadZone">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
           <p><strong>Click to upload</strong> or drag a .pdf, .xlsx, .csv, or a photo (.jpg/.png) of your timetable</p>
