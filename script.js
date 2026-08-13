@@ -291,37 +291,6 @@ function classesForDay(dayName){
 }
 
 /* ---------------- RENDER: DASHBOARD ---------------- */
-// Pixels per minute for the today-timeline — used both when laying out class
-// cards and when positioning the live red line, so they're always to scale
-// against each other (this is what makes the line land exactly on time).
-const PX_PER_MIN = 2.4;
-let timelineMapping = null; // set by renderDashboard(), read by positionNowLine()
-
-// Moves the existing .now-line to the current time (down to the second) without
-// touching/rebuilding the class cards. Creates the line once if it doesn't exist
-// yet; removes it if the current time has scrolled outside today's rendered range.
-function positionNowLine(){
-  const tl = document.getElementById('todayTimeline');
-  if(!tl || !timelineMapping) return;
-  const { dayStart, totalMinutes, pxPerMin } = timelineMapping;
-  const now = new Date();
-  const nowMinExact = now.getHours()*60 + now.getMinutes() + now.getSeconds()/60;
-  const inRange = nowMinExact >= dayStart-30 && nowMinExact <= dayStart+totalMinutes+30;
-  let line = tl.querySelector('.now-line');
-  if(!inRange){
-    if(line) line.remove();
-    return;
-  }
-  if(!line){
-    line = document.createElement('div');
-    line.className = 'now-line';
-    tl.appendChild(line);
-  }
-  line.style.top = ((nowMinExact - dayStart) * pxPerMin) + 'px';
-  line.setAttribute('data-time', now.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}));
-}
-setInterval(positionNowLine, 1000);
-
 function renderDashboard(){
   const now = new Date();
   const todayName = DAYS[now.getDay()];
@@ -353,17 +322,11 @@ function renderDashboard(){
   // timeline
   const tl = document.getElementById('todayTimeline');
   tl.innerHTML = '';
-  tl.style.height = '';
   if(todays.length===0){
     tl.innerHTML = '<div class="empty-note">No classes today — nothing on the timeline.</div>';
-    timelineMapping = null;
   } else {
     tl.innerHTML = '<div class="timeline-rail"></div>';
     let nextClass = null;
-    const dayStart = toMinutes(todays[0].start);
-    const dayEnd = toMinutes(todays[todays.length-1].end);
-    const totalMinutes = Math.max(dayEnd - dayStart, 60);
-    tl.style.height = (totalMinutes * PX_PER_MIN) + 'px';
     todays.forEach(c=>{
       const s=toMinutes(c.start), e=toMinutes(c.end);
       let cls='';
@@ -371,10 +334,8 @@ function renderDashboard(){
       else if(nowMin>=e) cls='done';
       else if(!nextClass && nowMin<s) nextClass=c;
       const {name, code} = splitSubjectCode(c.subject);
-      const top = (s - dayStart) * PX_PER_MIN;
-      const height = Math.max((e - s) * PX_PER_MIN, 40);
       tl.innerHTML += `
-        <div class="tl-item ${cls}" style="top:${top}px;height:${height}px;">
+        <div class="tl-item ${cls}">
           <div class="tl-time">${fmtTime(c.start)}</div>
           <div class="tl-dot"></div>
           <div class="tl-card">
@@ -383,10 +344,16 @@ function renderDashboard(){
           </div>
         </div>`;
     });
-    // time-to-pixel mapping for this render; the 1s ticker uses this to move
-    // the existing red line without re-rendering the cards.
-    timelineMapping = { dayStart, totalMinutes, pxPerMin: PX_PER_MIN };
-    positionNowLine();
+    // now-line position
+    const first = toMinutes(todays[0].start), last = toMinutes(todays[todays.length-1].end);
+    if(nowMin>=first-30 && nowMin<=last+30){
+      const span = Math.max(last-first, 1);
+      const pct = Math.min(Math.max((nowMin-first)/span,0),1)*100;
+      const line = document.createElement('div');
+      line.className='now-line'; line.setAttribute('data-time', now.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}));
+      line.style.top = pct+'%';
+      tl.appendChild(line);
+    }
     // next class card
     if(nextClass){
       const mins = toMinutes(nextClass.start)-nowMin;
